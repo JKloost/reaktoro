@@ -20,6 +20,9 @@ editor.addAqueousPhase("H2O(l) CO2(aq) Ca++ CO3-- CaCO3(aq)")
 #editor.addGaseousPhase(['CO2(g)'])
 #editor.addMineralPhase("Calcite") # solid
 
+def moltokg(component,kg):
+    return kg * Cspecies.molarMass(component)
+
 system = ChemicalSystem(editor)
 problem_ic = EquilibriumProblem(system)
 problem_bc = EquilibriumProblem(system)
@@ -27,6 +30,7 @@ state_ic = ChemicalState(system)
 state_bc = ChemicalState(system)
 path = EquilibriumPath(system)
 Cplot = ChemicalPlot(system)
+Cspecies = Species()
 output = path.output()
 output.filename("path_result.txt")
 output.add("phaseMass(Aqueous)")
@@ -35,24 +39,24 @@ output.add("speciesAmount(CO2(aq))")
 
 p = 100
 T = 60
-mole_water = 10
+mole_kg = 1
 mole_co2 = 5
 mole_ca = 5
 mole_CO3 = 5
 
 problem_ic.setTemperature(T, 'celsius')
 problem_ic.setPressure(p, 'bar')
-problem_ic.add('H2O', mole_water, 'mol')
-problem_ic.add('CO2', mole_co2, 'mol')
+problem_ic.add('H2O', mole_kg, 'kg')
 problem_ic.add('Ca++', mole_ca, 'mol')
 problem_ic.add('CO3--',mole_CO3, 'mol')
 #problem_ic.add('CaCO3(aq)',mole_ca,'mol')
 
 problem_bc.setTemperature(T, 'celsius')
 problem_bc.setPressure(p, 'bar')
-problem_bc.add('H2O', mole_water, 'mol')
+problem_bc.add('H2O', mole_kg, 'kg')
 problem_bc.add('Ca++', mole_ca, 'mol')
 problem_bc.add('CO3--',mole_CO3, 'mol')
+problem_ic.add('CO2', mole_co2, 'mol')
 #problem_bc.add('CaCO3(aq)', mole_ca, 'mol')
 
 #state_ic = equilibrate(problem_ic) # equilibrate the added elements injector
@@ -67,6 +71,7 @@ E = np.array([[1,   0,      0,      0,      0],
 stoich_matr = np.array([0, 0, 1, 1, -1])
 stoich_matr.transpose()
 #mole_total = ChemicalQuantity(state_ic).value("phaseAmount(Aqueous)")
+mole_water = 55.55 * mole_kg
 mole_total = mole_water+mole_ca+mole_co2+mole_CO3
 #mole_total = mole_water + mole_ca + mole_co2 + mole_CO3
 mole_fraction_water = mole_water / mole_total
@@ -100,6 +105,7 @@ T_solve_bc = problem_bc.temperature()
 amount_elements_bc = problem_bc.elementAmounts()
 print('amount elements by reaktoro producer', amount_elements_bc)
 bc_solved = solver.solve(state_bc, T_solve_bc, p_solve_bc, amount_elements_bc) # solve
+
 path = path.solve(state_ic, state_bc)
 #Cquantity = ChemicalQuantity(state) # to get quantity values of the state/sytem
 
@@ -118,7 +124,8 @@ volume_aq_bc = ChemicalQuantity(state_bc).value("phaseVolume(Aqueous)")
 density_bc = mass_aq_bc/volume_aq_bc
 
 #print(state_ic)
-state_ic.output('result_simple.txt')
+state_ic.output('result_simple_ic.txt')
+state_bc.output('result_simple_bc.txt')
 
 print('Amount of H2O ic:', state_ic.speciesAmount('H2O(l)'))
 print('Amount of CO2(aq) ic:', state_ic.speciesAmount('CO2(aq)'))
@@ -128,19 +135,19 @@ print('Density of Aqueous phase bc:', str(density_bc))
 
 #print('Amount of C in aqueous phase:', state_ic.elementAmountInPhase('C', 'Aqueous'))
 #print('Amount of C in gaseous phase:', state.elementAmountInPhase('C', 'Gaseous'))
-point1 = [0, density_ic]
-point2 = [100, density_bc]
+point1 = [0, density_bc]
+point2 = [100, density_ic]
 x_val = [point1[0], point2[0]]
 y_val = [point1[1], point2[1]]
 plt.figure(1)
-plt.plot(x_val,y_val,label='Density')
+plt.plot(x_val, y_val, label='Density')
 plt.legend()
 plt.show()
 plt.figure(2)
-plt.plot([0,100],[state_ic.speciesAmount('CO2(aq)'),state_bc.speciesAmount('CO2(aq)')], label='mol CO2')
-plt.plot([0,100],[state_ic.speciesAmount('CaCO3(aq)'),state_bc.speciesAmount('CaCO3(aq)')], label='mol CaCO3(aq)')
-plt.plot([0,100],[state_ic.speciesAmount('Ca++'),state_bc.speciesAmount('Ca++')], label='mol Ca++')
-plt.plot([0,100],[state_ic.speciesAmount('CO3--'),state_bc.speciesAmount('CO3--')], label='mol CO3--')
+plt.plot([0, 100], [state_ic.speciesAmount('CO2(aq)'), state_bc.speciesAmount('CO2(aq)')], label='mol CO2')
+plt.plot([0, 100], [state_ic.speciesAmount('CaCO3(aq)'), state_bc.speciesAmount('CaCO3(aq)')], label='mol CaCO3(aq)')
+plt.plot([0, 100], [state_ic.speciesAmount('Ca++'), state_bc.speciesAmount('Ca++')], label='mol Ca++')
+plt.plot([0, 100], [state_ic.speciesAmount('CO3--'), state_bc.speciesAmount('CO3--')], label='mol CO3--')
 plt.legend()
 plt.show()
 

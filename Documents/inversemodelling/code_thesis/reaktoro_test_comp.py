@@ -11,7 +11,7 @@ from reaktoro import *
 #  Perform reaction with reaktoro,                              CHECK, WITH ELEMENTS
 #  output density,                                              Y
 #  and component distribution,                                  Y
-#  Try in 1D vector code, with injection and producer well,     Y
+#  Try in 1D vector code, with injection and producer well,     N
 
 db = Database('supcrt98.xml')
 editor = ChemicalEditor(db)
@@ -39,24 +39,36 @@ output.add("speciesAmount(CO2(aq))")
 
 p = 100
 T = 60
-mole_kg = 1
+mole_h20 = 100
 mole_co2 = 5
 mole_ca = 5
 mole_CO3 = 5
+cells = np.arange(0, 100, 1)
 
-problem_ic.setTemperature(T, 'celsius')
-problem_ic.setPressure(p, 'bar')
-problem_ic.add('H2O', mole_kg, 'kg')
-problem_ic.add('Ca++', mole_ca, 'mol')
-problem_ic.add('CO3--',mole_CO3, 'mol')
+# problem_ic.setTemperature(T, 'celsius')
+# problem_ic.setPressure(p, 'bar')
+# problem_ic.add('H2O', mole_kg, 'kg')
+# problem_ic.add('Ca++', mole_ca, 'mol')
+# problem_ic.add('CO3--',mole_CO3, 'mol')
+state_ic.setTemperature(T, 'celsius')
+state_ic.setPressure(p, 'bar')
+state_ic.setSpeciesAmount('H2O(l)', mole_h20, 'mol')
+state_ic.setSpeciesAmount('Ca++', mole_ca, 'mol')
+state_ic.setSpeciesAmount('CO3--',mole_CO3, 'mol')
 #problem_ic.add('CaCO3(aq)',mole_ca,'mol')
-
-problem_bc.setTemperature(T, 'celsius')
-problem_bc.setPressure(p, 'bar')
-problem_bc.add('H2O', mole_kg, 'kg')
-problem_bc.add('Ca++', mole_ca, 'mol')
-problem_bc.add('CO3--',mole_CO3, 'mol')
-problem_ic.add('CO2', mole_co2, 'mol')
+#
+# problem_bc.setTemperature(T, 'celsius')
+# problem_bc.setPressure(p, 'bar')
+# problem_bc.add('H2O', mole_h20, 'mol')
+# problem_bc.add('Ca++', mole_ca, 'mol')
+# problem_bc.add('CO3--',mole_CO3, 'mol')
+# problem_ic.add('CO2', mole_co2, 'mol')
+state_bc.setTemperature(T, 'celsius')
+state_bc.setPressure(p, 'bar')
+state_bc.setSpeciesAmount('H2O(l)', mole_h20, 'mol')
+state_bc.setSpeciesAmount('Ca++', mole_ca, 'mol')
+state_bc.setSpeciesAmount('CO3--',mole_CO3, 'mol')
+state_bc.setSpeciesAmount('CO2(aq)', mole_co2, 'mol')
 #problem_bc.add('CaCO3(aq)', mole_ca, 'mol')
 
 #state_ic = equilibrate(problem_ic) # equilibrate the added elements injector
@@ -71,10 +83,9 @@ E = np.array([[1,   0,      0,      0,      0],
 stoich_matr = np.array([0, 0, 1, 1, -1])
 stoich_matr.transpose()
 #mole_total = ChemicalQuantity(state_ic).value("phaseAmount(Aqueous)")
-mole_water = 55.55 * mole_kg
-mole_total = mole_water+mole_ca+mole_co2+mole_CO3
+mole_total = mole_h20+mole_ca+mole_co2+mole_CO3
 #mole_total = mole_water + mole_ca + mole_co2 + mole_CO3
-mole_fraction_water = mole_water / mole_total
+mole_fraction_water = mole_h20 / mole_total
 mole_fraction_co2 = mole_co2 / mole_total
 mole_fraction_ca = mole_ca / mole_total
 mole_fraction_CO3 = mole_CO3 / mole_total
@@ -94,15 +105,16 @@ print('amount components by elimination matrix:', ze)
 solver = EquilibriumSolver(system) # solves the system
 #state = ChemicalState(system)
 
-p_solve = problem_ic.pressure()
-T_solve = problem_ic.temperature()
-amount_elements_ic = problem_ic.elementAmounts()
+p_solve = state_ic.pressure()
+T_solve = state_ic.temperature()
+amount_elements_ic = state_ic.elementAmounts()
 print('amount elements by reaktoro [C, Ca, H, O, Z]:', amount_elements_ic)
 ic_solved = solver.solve(state_ic, T_solve, p_solve, amount_elements_ic) # solve
+#print(system.numElements())
 
-p_solve_bc = problem_bc.pressure()
-T_solve_bc = problem_bc.temperature()
-amount_elements_bc = problem_bc.elementAmounts()
+p_solve_bc = state_bc.pressure()
+T_solve_bc = state_bc.temperature()
+amount_elements_bc = state_bc.elementAmounts()
 print('amount elements by reaktoro producer', amount_elements_bc)
 bc_solved = solver.solve(state_bc, T_solve_bc, p_solve_bc, amount_elements_bc) # solve
 
@@ -133,8 +145,8 @@ print('Amount of CO3-- ic:', state_ic.speciesAmount('CO3--'))
 print('Density of Aqueous phase ic:', str(density_ic))
 print('Density of Aqueous phase bc:', str(density_bc))
 
-#print('Amount of C in aqueous phase:', state_ic.elementAmountInPhase('C', 'Aqueous'))
-#print('Amount of C in gaseous phase:', state.elementAmountInPhase('C', 'Gaseous'))
+# print('Amount of C in aqueous phase:', state_ic.elementAmountInPhase('C', 'Aqueous'))
+# print('Amount of C in gaseous phase:', state.elementAmountInPhase('C', 'Gaseous'))
 point1 = [0, density_bc]
 point2 = [100, density_ic]
 x_val = [point1[0], point2[0]]

@@ -64,16 +64,27 @@ class Model(Variables):
         self.states.append(self.state)
 
     def ouput(self):
+        H20_amount = [state.speciesAmount("H2O(l)") for state in self.states]
         CO2_amount = [state.speciesAmount("CO2(aq)") for state in self.states]
         CaCO3_amount = [state.speciesAmount("CaCO3(aq)") for state in self.states]
         Ca_amount = [state.speciesAmount("Ca++") for state in self.states]
         CO3_amount = [state.speciesAmount("CO3--") for state in self.states]
         mass = [ChemicalQuantity(state).value("phaseMass(Aqueous)") for state in self.states]
         volume = [ChemicalQuantity(state).value("phaseVolume(Aqueous)") for state in self.states]
+        mole_total = [ChemicalQuantity(state).value("phaseAmount(Aqueous)") for state in self.states]
         density = np.zeros(len(mass))
+        z_h20 = np.zeros(len(mass))
+        z_co2 = np.zeros(len(mass))
+        z_ca = np.zeros(len(mass))
+        z_co3 = np.zeros(len(mass))
+        for i in range(len(mass)):
+            z_h20[i] = H20_amount[i]/mole_total[i]
+            z_co2[i] = CO2_amount[i]/mole_total[i]
+            z_ca[i] = Ca_amount[i]/mole_total[i]
+            z_co3[i] = CO3_amount[i]/mole_total[i]
         for i in range(len(mass)):
             density[i] = mass[i] / volume[i]
-        return CO2_amount, CaCO3_amount, Ca_amount, CO3_amount, density
+        return z_h20, z_co2, z_ca, z_co3, density
 
 m = Model()
 for i in range(len(m.cells)):
@@ -81,18 +92,19 @@ for i in range(len(m.cells)):
     m.addingstates(m.T, m.p, m.mole_cells_co2[i])
 for i in range(len(m.cells)):
     amount_elements = m.states[i].elementAmounts()
+    print(amount_elements)
     m.solver.solve(m.states[i], m.T, m.p, amount_elements)
 
-CO2_amount, CaCO3_amount, Ca_amount, CO3_amount, density = m.ouput()
+z_h20, z_co2, z_ca, z_co3, density = m.ouput()
 
 plt.figure(1)
 plt.plot(m.cells, density, label='Density')
 plt.legend()
 plt.show()
 plt.figure(2)
-plt.plot(m.cells, CO2_amount, label='CO2')
-plt.plot(m.cells, CaCO3_amount, label='CaCO3(aq)')
-plt.plot(m.cells, Ca_amount, label='Ca++')
-plt.plot(m.cells, CO3_amount, label='CO3--')
+plt.plot(m.cells, z_co2, label='CO2')
+plt.plot(m.cells, z_h20, label='H2O')
+plt.plot(m.cells, z_ca, label='Ca++')
+plt.plot(m.cells, z_co3, label='CO3--')
 plt.legend()
 plt.show()

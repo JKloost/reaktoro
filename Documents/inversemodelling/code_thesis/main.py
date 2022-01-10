@@ -2,8 +2,10 @@ from darts_interpolator import DartsInterpolator
 
 
 # function for arbitrary number of dimensions
-def func(*my_vars):
-    return sum([var * var for var in my_vars])
+def func(my_vars, values):
+    values[0] = sum([var * var for var in my_vars])
+    values[1] = -sum([var * var for var in my_vars])
+    return 0
 
 n_dim = 2
 axes_points = [7] * n_dim

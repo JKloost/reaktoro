@@ -47,7 +47,7 @@ class DartsInterpolator:
                 self.func = func
 
             def evaluate(self, state, values):
-                values[0] = self.func(*state)
+                self.func(state, values)
                 return 0
 
         # verify then inputs are valid
@@ -75,7 +75,7 @@ class DartsInterpolator:
                                                                      platform,
                                                                      precision,
                                                                      self.n_dim,
-                                                                     1))
+                                                                     2))
 
         # create the instance of interpolator
         # point calculation happens here, so measure it
@@ -85,22 +85,22 @@ class DartsInterpolator:
         self.interpolator.init()
         self.timer.node['init'].stop()
         # create a value for a interpolate_point output
-        self.value = value_vector([0])
-        self.derivatives = value_vector([0] * self.n_dim)
+        self.values = value_vector([0, 0])
+        self.derivatives = value_vector([0, 0] * self.n_dim)
 
         self.interpolator.init_timer_node(self.timer)
 
     def interpolate_point(self, point):
         assert (len(point) == self.n_dim)
-        self.interpolator.evaluate(value_vector(point), self.value)
-        return self.value[0]
+        self.interpolator.evaluate(value_vector(point), self.values)
+        return self.values
 
     def interpolate_point_with_derivatives(self, point):
         assert (len(point) == self.n_dim)
 
-        self.interpolator.evaluate_with_derivatives(value_vector(point), index_vector([0]), self.value,
+        self.interpolator.evaluate_with_derivatives(value_vector(point), index_vector([0, 0]), self.values,
                                                     self.derivatives)
-        return self.value[0], self.derivatives
+        return self.values, self.derivatives
 
     def interpolate_array(self, grid):
         if len(grid.shape) > 1:
@@ -123,10 +123,10 @@ class DartsInterpolator:
         block_idx = index_vector(np.arange(int(len(states) / self.n_dim), dtype=np.int32))
 
         # values should fit single value per point
-        values = value_vector([0] * int((len(states) / self.n_dim)))
+        values = value_vector([0, 0] * int((len(states) / self.n_dim)))
 
         # derivatives should fit self.n_dim values per point
-        derivatives = value_vector([0] * len(states))
+        derivatives = value_vector([0, 0] * len(states))
 
         # interpolate and shape the result
         self.interpolator.evaluate_with_derivatives(points, block_idx, values, derivatives)

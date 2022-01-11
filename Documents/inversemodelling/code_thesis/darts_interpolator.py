@@ -38,7 +38,7 @@ from darts.engines import operator_set_evaluator_iface, timer_node, value_vector
 
 
 class DartsInterpolator:
-    def __init__(self, func, axes_points, axes_min, axes_max, algorithm: str = 'multilinear', mode: str = 'adaptive',
+    def __init__(self, func, axes_points, axes_min, axes_max, amount_of_int, algorithm: str = 'multilinear', mode: str = 'adaptive',
                  platform: str = 'cpu', precision: str = 'd'):
         # create a darts wrapper for function
         class custom_evaluator(operator_set_evaluator_iface):
@@ -47,7 +47,8 @@ class DartsInterpolator:
                 self.func = func
 
             def evaluate(self, state, values):
-                self.func(state, values)
+                #values[0] = self.func(*state)
+                self.func(state,values)
                 return 0
 
         # verify then inputs are valid
@@ -56,6 +57,7 @@ class DartsInterpolator:
         for n_p in axes_points:
             assert n_p > 1
 
+        self.amount_of_interpolators = amount_of_int ########################### Change this value for more or less interpolator
         # create the instance of the wrapper
         self.evaluator = custom_evaluator(func)
         self.n_dim = len(axes_points)
@@ -75,7 +77,7 @@ class DartsInterpolator:
                                                                      platform,
                                                                      precision,
                                                                      self.n_dim,
-                                                                     2))
+                                                                     self.amount_of_interpolators))
 
         # create the instance of interpolator
         # point calculation happens here, so measure it
@@ -85,8 +87,11 @@ class DartsInterpolator:
         self.interpolator.init()
         self.timer.node['init'].stop()
         # create a value for a interpolate_point output
-        self.values = value_vector([0, 0])
-        self.derivatives = value_vector([0, 0] * self.n_dim)
+        self.amount_vector = []
+        for i in range(self.amount_of_interpolators):
+            self.amount_vector.append(0)
+        self.values = value_vector(self.amount_vector)
+        self.derivatives = value_vector(self.amount_vector * self.n_dim)
 
         self.interpolator.init_timer_node(self.timer)
 
@@ -98,7 +103,7 @@ class DartsInterpolator:
     def interpolate_point_with_derivatives(self, point):
         assert (len(point) == self.n_dim)
 
-        self.interpolator.evaluate_with_derivatives(value_vector(point), index_vector([0, 0]), self.values,
+        self.interpolator.evaluate_with_derivatives(value_vector(point), index_vector(self.amount_vector), self.values,
                                                     self.derivatives)
         return self.values, self.derivatives
 
@@ -123,10 +128,10 @@ class DartsInterpolator:
         block_idx = index_vector(np.arange(int(len(states) / self.n_dim), dtype=np.int32))
 
         # values should fit single value per point
-        values = value_vector([0, 0] * int((len(states) / self.n_dim)))
+        values = value_vector(self.amount_vector * int((len(states) / self.n_dim)))
 
         # derivatives should fit self.n_dim values per point
-        derivatives = value_vector([0, 0] * len(states))
+        derivatives = value_vector(self.amount_vector * len(states))
 
         # interpolate and shape the result
         self.interpolator.evaluate_with_derivatives(points, block_idx, values, derivatives)

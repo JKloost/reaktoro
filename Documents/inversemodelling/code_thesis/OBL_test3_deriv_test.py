@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from scipy import ndimage
-from interpolation.splines import UCGrid, CGrid, nodes
-from interpolation.splines import eval_linear
-from src.darts_interpolator import DartsInterpolator
+# from interpolation.splines import UCGrid, CGrid, nodes
+# from interpolation.splines import eval_linear
+from darts_interpolator import DartsInterpolator
 
 def RachfordRice(*z):
     z_RR = list(z[0])
@@ -42,47 +42,33 @@ def beta_test(z, values):
     Ln = (z_beta[0] - y[0]) / (x[0] - y[0])  # Ln = (z[1] - y[1]) / (x[1] - y[1]) gives the same sat
     for i in range(len(z_beta)):
         #Ln = (z_beta[i] - y[i]) / (x[i] - y[i])
-        if Ln <= 0:
-            beta_operator = (z_beta[i] * (((1 - 0) ** n2) / mu_g)) / (((1 - 0) ** n2) / mu_g)
-            #alpha_operator = (z_beta[i] * rho_g)
-            #Ln = 0
-            #x = np.zeros(len(z))
-            #y = z
-        elif Ln >= 1:
-            beta_operator = (z_beta[i] * ((1 ** n1) / mu_L)) / ((1 ** n1) / mu_L)
-            #alpha_operator = (z_beta[i] * rho_L)
-            #Ln = 1
-            #x = z
-            #y = np.zeros(len(z))
+        if Ln < 0 or Ln > 1:
+            beta_operator = z_beta[i]
         else:
             beta_operator = (x[i]*((Ln**n1)/mu_L) + y[i]*(((1-Ln)**n2)/mu_g)) / ((Ln**n1)/mu_L + ((1-Ln)**n2)/mu_g)
-            #rho_t = (x[i] * rho_L + y[i] * rho_g) / (x[i] + y[i])
-            #alpha_operator = z_beta[i] * rho_t
+
         values[i] = beta_operator
-        #values[len(z_beta)+i] = alpha_operator
-    #beta_operator = (x[1]*((Ln**n1)/mu_L) + y[1]*(((1-Ln)**n2)/mu_g)) / ((Ln**n1)/mu_L + ((1-Ln)**n2)/mu_g)
-    #return beta_operator
     return 0
 
 def simulate_comp_impl(nb, Theta_ref, NT, z):
-    comp = len(z)-1
-    rhs = np.zeros(nb*comp)
-    jac = np.zeros([nb*comp, nb*comp])  # the more compositions, the larger the jacobian
+    C = int(len(z) / nb)
+    rhs = np.zeros(nb * C)
+    jac = np.zeros([nb * C, nb * C])  # the more compositions, the larger the jacobian
     nit = 0  # Counter for non-linear iterations
     Theta = Theta_ref / 1000
-    beta_interpol = DartsInterpolator(beta_test, axes_points=[1000, 1000], axes_min=[0, 0], axes_max=[1, 1], amount_of_int=2)
+    beta_interpol = DartsInterpolator(beta_test, axes_points=[1000] * C, axes_min=[0] * C, axes_max=[1] * C,
+                                      amount_of_int=C)
     for t in range(NT):
         zn = np.array(z, copy=True)
         for n in range(100):
-            z_column = [row[0] for row in z][0:-1]
             beta_L, beta_L_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
             beta_L = np.array(beta_L, copy=True)
             beta_L_deriv = np.array(beta_L_deriv, copy=True)
-            beta_L_deriv = np.reshape(beta_L_deriv, (2,2))
+            beta_L_deriv = np.reshape(beta_L_deriv, (comp, comp))
             for j in range(comp):
                 rhs[j] = 0
                 for j2 in range(len(z)-1):
-                    jac[j,j2] = 1
+                    jac[j, j2] = 1
             for i in range(comp, nb*comp):
                 if i % comp == 0:
                     u = int(i / comp)
@@ -90,7 +76,7 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
                     beta, beta_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
                     beta = np.array(beta, copy=True)
                     beta_deriv = np.array(beta_deriv, copy=True)
-                    beta_deriv = np.reshape(beta_deriv, (2, 2))
+                    beta_deriv = np.reshape(beta_deriv, (comp, comp))
                     for j in range(comp):
                         rhs[i+j] = z[j][u] - zn[j][u] + Theta * (beta[j] - beta_L[j])
                         for j2 in range(comp):
@@ -119,22 +105,19 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
 nb = 3
 Theta = 0.1
 NT = 10
-components = 3 # Change K in rachfordrice, z_inj and z
-z_last_comp = np.zeros(nb)
-z_inj = np.zeros(components)
-z_inj[0] = 0.8 # injection first composition
-z_inj[1] = 0.15
-z = np.array(np.ones(nb)*0.1) #composition of the cells
-z = np.append(z,np.array(np.ones(nb)*0.1))
-z[0] = z_inj[0] # set first cell to injection
-z[nb] = z_inj[1]
-for i in range(nb):
-    z_last_comp[i] = z[i] + z[nb+i]
-z2 = np.append(z,np.array(np.ones(nb)-z_last_comp,dtype=float))
-z3 = np.reshape(z2,[components,nb])
+components = 2 # Change K in rachfordrice, z_inj and z
+C = components - 1
+z_inj = [0.8]
+z_ini = [0.1]
+z = np.zeros(nb * C)
+for i in range(C):
+    z[i::C] = z_ini[i]
+#z[:C] = z_inj
+
+
 x = np.linspace(0, 1, nb)
 
-z_plot = simulate_comp_impl(nb, Theta, NT, z3)
+z_plot = simulate_comp_impl(nb, Theta, NT, z)
 z1_plot = z_plot[0]
 z2_plot = z_plot[1]
 z3_plot = np.zeros(len(z1_plot))

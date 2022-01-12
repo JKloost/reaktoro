@@ -66,6 +66,7 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
             beta_L, beta_L_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
             beta_L = np.array(beta_L, copy=True)
             beta_L_deriv = np.array(beta_L_deriv, copy=True)
+            print('beta_L',beta_L_deriv)
             beta_L_deriv = np.reshape(beta_L_deriv, (C, C))
             for j in range(C):
                 rhs[j] = 0
@@ -80,6 +81,7 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
                     beta, beta_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
                     beta = np.array(beta, copy=True)
                     beta_deriv = np.array(beta_deriv, copy=True)
+                    print('beta',beta_deriv)                            # returns deriv [1,0,0,1]
                     beta_deriv = np.reshape(beta_deriv, (C, C))
                     for j in range(C):
                         rhs[i+j] = z[(j+1)*u] - zn[(j+1)*u] + Theta * (beta[j] - beta_L[j])
@@ -133,3 +135,4 @@ plt.xlabel('x dimensionless')
 #plt.ylim(0,1)
 plt.legend()
 plt.show()
+print('final z', z_plot)

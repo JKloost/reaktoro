@@ -6,11 +6,10 @@ import scipy
 from scipy import ndimage
 # from interpolation.splines import UCGrid, CGrid, nodes
 # from interpolation.splines import eval_linear
-from src.darts_interpolator import DartsInterpolator
+from darts_interpolator import DartsInterpolator
 
 def RachfordRice(*z):
     z_RR = list(z[0])
-    #z = np.array([z,0.49,0.01])
     z2 = np.append(z,1-sum(z_RR))
     K = np.array([3, 0.1])
     #K = np.array([6, 0.8, 0.07])
@@ -52,6 +51,7 @@ def beta_test(z, values):
 
 def simulate_comp_impl(nb, Theta_ref, NT, z):
     C = int(len(z) / nb)
+    z_column = np.zeros(C)
     rhs = np.zeros(nb * C)
     jac = np.zeros([nb * C, nb * C])  # the more compositions, the larger the jacobian
     nit = 0  # Counter for non-linear iterations
@@ -61,8 +61,8 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
     for t in range(NT):
         zn = np.array(z, copy=True)
         for n in range(100):
-            #z_column = [row[0] for row in z][0:-1]
-            z_column = [z[0]]
+            for i in range(C):
+                z_column[i] = z[i*(nb)]
             beta_L, beta_L_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
             beta_L = np.array(beta_L, copy=True)
             beta_L_deriv = np.array(beta_L_deriv, copy=True)
@@ -75,7 +75,8 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
                 if i % C == 0:
                     u = int(i / C)
                     #z_column = [row[u] for row in z][0:-1]
-                    z_column = [z[u]]
+                    for q in range(C):
+                        z_column[q] = z[u+q*nb] #[z[u], z[C+u+1]]
                     beta, beta_deriv = beta_interpol.interpolate_point_with_derivatives(z_column)
                     beta = np.array(beta, copy=True)
                     beta_deriv = np.array(beta_deriv, copy=True)
@@ -105,20 +106,17 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
         Theta = Theta_ref
     return z
 
-nb = 10
-Theta = 0.5
-NT = 10
-components = 2 # Change K in rachfordrice, z_inj and z
+nb = 3
+Theta = 0.2
+NT = 3
+components = 2      # Also change K in rachfordrice (line 14-15)
 C = components - 1
-z_inj = [0.9]
-z_ini = [0.1]
+z_inj = [0.6, 0.3]
+z_ini = [0.1, 0.2]
 z = np.zeros(nb * C)
 for i in range(C):
-    z[i::C] = z_ini[i]
-z[:C] = z_inj
-#z[0] = z_inj[0]
-
-
+    z[nb*i:nb*(i+1)] = z_ini[i]
+    z[i * nb] = z_inj[i]
 x = np.linspace(0, 1, nb)
 
 z_plot = simulate_comp_impl(nb, Theta, NT, z)

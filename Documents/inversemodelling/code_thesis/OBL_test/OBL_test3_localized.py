@@ -6,7 +6,7 @@ import scipy
 from scipy import ndimage
 # from interpolation.splines import UCGrid, CGrid, nodes
 # from interpolation.splines import eval_linear
-from darts_interpolator import DartsInterpolator
+from src.darts_interpolator import DartsInterpolator
 
 def RachfordRice(*z):
     z_RR = list(z[0])
@@ -63,30 +63,33 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
             beta_L, beta_L_deriv = beta_interpol.interpolate_point_with_derivatives(z[0])
             beta_L = np.array(beta_L, copy=True)
             beta_L_deriv = np.array(beta_L_deriv, copy=True)
+            beta_L_deriv2 = Theta * beta_L_deriv
+            #for q in range(C):
+            #    beta_L_deriv2[q*C+q] += 1                #Alpha operator
+            beta_L_deriv2 = np.reshape(beta_L_deriv2, (C, C))
+            jac[0:C, 0:C] = beta_L_deriv2
             #print('beta_L',beta_L_deriv)
-            beta_L_deriv = np.reshape(beta_L_deriv, (C, C))
-            for j in range(C):
-                rhs[j] = 0
-                for j2 in range(C):
-                    jac[j, j2] = 1 + Theta * beta_L_deriv[j, j2]   # fills first diagonal with ones
-            for i in range(C, C*nb):
-                if i % C == 0:
-                    u = int(i / C)
-                    beta, beta_deriv = beta_interpol.interpolate_point_with_derivatives(z[u])
-                    beta = np.array(beta, copy=True)
-                    beta_deriv = np.array(beta_deriv, copy=True)
-                    #print('beta',beta_deriv)        # returns deriv [1,0,0,1]
-                    beta_deriv = np.reshape(beta_deriv, (C, C))
-                    for j in range(C):
-                        rhs = np.append(rhs, z[u][j] - zn[u][j] + Theta * (beta[j] - beta_L[j]))
-                        for j2 in range(C):
-                            jac[i+j, i-C+j2] = - Theta * beta_L_deriv[j][j2]
-                            jac[i+j, i+j2] = 1 + Theta * beta_deriv[j][j2]
-                    beta_L = beta
-                    beta_L_deriv = beta_deriv
-            np.set_printoptions(precision=7,suppress=True)
-            #print(jac)
-            #print('rhs',rhs)
+            for j in range(1,nb):
+                #print('beta_L_deriv2',beta_L_deriv)
+                beta, beta_deriv = beta_interpol.interpolate_point_with_derivatives(z[j])
+                beta = np.array(beta, copy=True)
+                beta_deriv = np.array(beta_deriv, copy=True)
+                beta_deriv2 = Theta * beta_deriv
+                for i in range(C):
+                    rhs = np.append(rhs, z[j][i] - zn[j][i] + Theta * (beta[i] - beta_L[i]))  # needs better way
+                for q in range(C):
+                    beta_deriv2[q * C + q] += 1  # Alpha operator
+                beta_deriv2 = np.reshape(beta_deriv2, (C, C))
+                jac[C*j:C*j+C, C*(j-1):C*(j-1)+C] = beta_L_deriv2
+                jac[C*j:C*j+C, C*j:C*j+C] = beta_deriv2
+                        #jac[i+j, i-C+j2] = - Theta * beta_L_deriv[j][j2]
+                        #jac[i+j, i+j2] = 1 + Theta * beta_deriv[j][j2]
+                beta_L = beta
+                beta_L_deriv = beta_deriv
+            np.set_printoptions(precision=5,suppress=True)
+            print(jac)
+
+            print('rhs',rhs)
             res = np.linalg.norm(rhs)
             if res < 1e-4:
                 nit += n + 1
@@ -94,18 +97,22 @@ def simulate_comp_impl(nb, Theta_ref, NT, z):
             if n == 99:
                 print('newton itor problems')
             dz = np.linalg.solve(jac, -rhs)
+            print('dz',dz)
             #print('dz',dz)
             #print('z',z)
             z_dz = np.array(z).flatten('C')
             z_dz = [sum(t) for t in zip(dz, z_dz)]
             z = [[z_dz[x*C], z_dz[x*C+1]] for x in range(nb)] # HARDCODED
+            #z = [[z_dz[x * C]] for x in range(nb)]
+            print('z',z)
             #print('final',z)
+            #exit()
         Theta = Theta_ref
     return z
 
-nb = 3
+nb = 10
 Theta = 0.2
-NT = 3
+NT = 10
 components = 3          # Also change K in rachfordrice (line 14-15) and line 102 and z_inj/z_ini
 C = components - 1
 #z_inj = [0.9]
@@ -116,6 +123,7 @@ x = np.linspace(0, 1, nb)
 z = [z_inj]
 for i in range(nb-1):
     z.append(z_ini)
+print(z)
 z_plot = simulate_comp_impl(nb, Theta, NT, z)
 #z1_plot = z_plot[0]
 #z2_plot = z_plot[1]

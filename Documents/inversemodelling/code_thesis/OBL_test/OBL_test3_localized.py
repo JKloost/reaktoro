@@ -47,14 +47,12 @@ def beta_test(z, values):
         if Ln <= 0:
             z_comp = Ln*x[0]+(1-Ln)*y[0]
             beta_operator = (z[i] * (((1 - 0) ** n2) / mu_g)) / (((1 - 0) ** n2) / mu_g)
-            #alpha_operator = (Ln*x[i]+(1-Ln)*y[i])*(Ln*rho_L+(1-Ln)*rho_g)
-            rho_t = ((1 - Ln) * rho_g)
+            rho_t = (1-0) * rho_g # s * rho
             alpha_operator = z_beta[i] * rho_t
         elif Ln >= 1:
             z_comp = Ln*x[0]+(1-Ln)*y[0]
             beta_operator = (z[i] * ((1 ** n1) / mu_L)) / ((1 ** n1) / mu_L)
-            #alpha_operator = (Ln*x[i]+(1-Ln)*y[i])*(Ln*rho_L+(1-Ln)*rho_g)
-            rho_t = (Ln * rho_L)
+            rho_t = 1 * rho_L # s * rho
             alpha_operator = z_beta[i] * rho_t
         else:
             z_comp = Ln*x[0]+(1-Ln)*y[0]
@@ -332,17 +330,16 @@ z_plot_example_expl, z_plot_example_expl2,z_comp_expl = simulate_comp_expl(nb, T
 z3_plot = np.zeros(nb)
 for i in range(nb):
     z3_plot[i] = 1 - sum(z_plot[i])
-plt.plot(x, z_plot,label='z, own code')
+
 #plt.plot(t,z_comp_expl,label='z_1_expl example at nb/3')
 #plt.plot(t,z_comp,label='z_1 at nb/3')
+
+plt.plot(x, z_plot,label='z, own code')
 #plt.plot(x, z_plot_example,'--', label='implicit, example')
 plt.plot(x,z_plot_example_expl, '--', label='expl example')
-#plt.plot(x,z3_plot)
-#plt.plot(x, z2_plot, label='z2')
-#plt.plot(x, z3_plot, label='z3')
+
 plt.ylabel('Saturation')
 plt.xlabel('x dimensionless')
-#plt.ylim(0,1)
 plt.legend()
 plt.show()
 #print('final z', z_plot)
